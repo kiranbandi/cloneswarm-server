@@ -1,0 +1,29 @@
+{
+    "name": "cloneswarm-server",
+    "version": "1.0.0",
+    "description": "NodeJS Rest API backend for cloneswarm UI",
+    "main": "app.js",
+    "scripts": {
+        "start": "node app.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/kiranbandi/cloneswarm-server.git"
+    },
+    "keywords": [
+        "aws",
+        "node",
+        "cloneswarm",
+        "clone"
+    ],
+    "author": "kiranbandi",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/kiranbandi/cloneswarm-server/issues"
+    },
+    "homepage": "https://github.com/kiranbandi/cloneswarm-server#readme",
+    "dependencies": {
+        "body-parser": "^1.18.3",
+        "express": "^4.16.3"
+    }
+}
