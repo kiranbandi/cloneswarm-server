@@ -8,6 +8,7 @@ var fs = require('fs');
 var Promise = require('promise');
 // Shortid to create a unique short code 
 var shortid = require('shortid');
+var nodemailer = require('nodemailer');
 var app = express();
 
 // Configure AWS with your credentials set in environmental variables
@@ -18,6 +19,19 @@ const s3 = new AWS.S3();
 //body parser used to extract params sent from client side
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Configure Mail Client 
+var transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: 'cloneswarm.usask@gmail.com',
+        pass: process.env.PASSWORD
+    },
+    secure: false,
+    tls: {
+        rejectUnauthorized: false
+    }
+});
 
 app.get('/processRepository', function(req, res) {
 
@@ -68,6 +82,7 @@ app.get('/processRepository', function(req, res) {
             //  If all the files are processed properly then send a mail to the person informing that processing is done 
             .then(data => {
                 console.log("Processing complete for UID-" + uniqueID);
+                sendMail('bvenkatkiran@gmail.com', "You Sir are Amazing :-D <br/> From - Clone Swarm Team")
             })
             .catch(err => {
                 console.log('error in uploading files to s3', err);
@@ -88,6 +103,24 @@ function readFile(filePath) {
                 resolve(contents)
             };
         });
+    });
+}
+
+function sendMail(toMailAddress, mailMessage) {
+
+    var mailOptions = {
+        from: 'cloneswarm.usask@gmail.com',
+        to: toMailAddress,
+        subject: 'Cloneswarm Project Report',
+        text: mailMessage
+    };
+
+    transporter.sendMail(mailOptions, function(error, info) {
+        if (error) {
+            console.log(error);
+        } else {
+            console.log('Email sent to ' + toMailAddress);
+        }
     });
 }
 
