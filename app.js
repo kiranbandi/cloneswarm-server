@@ -45,23 +45,23 @@ app.get('/processRepository', function(req, res) {
 
         const filteredTree = dirTree('workspace/sandbox-' + uniqueID + "/" + project_name);
 
-        saveFileToS3Bucket(uniqueID + "-json", "json", JSON.stringify(filteredTree))
-            .then(data => {
-                console.log(data);
-            })
-            .catch(err => {
-                console.log('error in s3 upload', err);
-            })
-            .finally(() => {
-                shell.exec("rm -rf workspace/sandbox-" + uniqueID);
-            })
+        // saveFileToS3Bucket(uniqueID + "-json", "json", JSON.stringify(filteredTree))
+        //     .then(data => {
+        //         console.log(data);
+        //     })
+        //     .catch(err => {
+        //         console.log('error in uploading files to s3', err);
+        //     })
+        //     .finally(() => {
+        //         shell.exec("rm -rf workspace/sandbox-" + uniqueID);
+        //     })
     });
 })
 
 function saveFileToS3Bucket(filename, filetype, base64FileData) {
 
     const params = {
-        Bucket: 'cloneswarm-store',
+        Bucket: 'cloneswarm-store/clone-data',
         Key: `${filename}.${filetype}`,
         Body: base64FileData,
         ACL: 'public-read',
