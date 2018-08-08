@@ -21,8 +21,8 @@ if [[ -z "$UNIQUE_ID" ]]
                 mkdir "$PROJ_DIRECTORY"
                 # Go into that directory 
                 cd "$PROJ_DIRECTORY"
-                # Clone the GIT Repository 
-                git clone "$REPO_NAME"
+                # Clone the GIT Repository - Shallow clone to reduce server load
+                git clone --depth 1 "$REPO_NAME"
                 # Run Nicad on the project
                 nicad4 functions java "$PROJECT_NAME" defaultreport
         fi
