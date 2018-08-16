@@ -5,6 +5,8 @@
 UNIQUE_ID=$1
 REPO_NAME=$2
 PROJECT_NAME=$3
+PROG_LANG=$4
+GRANULARITY=$5
 
 if [[ -z "$UNIQUE_ID" ]]
     then 
@@ -24,7 +26,7 @@ if [[ -z "$UNIQUE_ID" ]]
                 # Clone the GIT Repository - Shallow clone to reduce server load
                 git clone --depth 1 "$REPO_NAME"
                 # Run Nicad on the project
-                nicad4 functions java "$PROJECT_NAME" defaultreport
+                nicad4 "$GRANULARITY" "$PROG_LANG" "$PROJECT_NAME" defaultreport
         fi
 fi
 
