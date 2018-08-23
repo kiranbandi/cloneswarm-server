@@ -5,16 +5,16 @@ var shortid = require('shortid');
 var app = express();
 const MongoClient = require('mongodb').MongoClient;
 
-const serverParameters = require('./serverParams');
+const config = require('./config');
 const cloneProcessorCreator = require('./cloneProcessor');
 
 
-const mongoServer = "mongodb://" + serverParameters.MUSER + ":" + serverParameters.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
+const mongoServer = "mongodb://" + config.MUSER + ":" + config.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
 
 // Link keys
 const options = {
-cert:fs.readFileSync('./key/fullchain.pem'),
-key:fs.readFileSync('./key/privkey.pem')
+    cert: fs.readFileSync('./key/fullchain.pem'),
+    key: fs.readFileSync('./key/privkey.pem')
 }
 
 
@@ -24,9 +24,9 @@ MongoClient.connect(mongoServer, (err, client) => {
     if (err) return console.log(err);
 
     database = client.db('clone-swarm-repo-records');
-    cloneProcessor = new cloneProcessorCreator(database, serverParameters);
+    cloneProcessor = new cloneProcessorCreator(database, config);
 
-    var server = https.createServer(options,app).listen(8443, function() {
+    var server = https.createServer(options, app).listen(8443, function() {
         console.log("Server Live on Port 8443")
     })
 });

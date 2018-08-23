@@ -1,5 +1,5 @@
 const nodemailer = require('nodemailer');
-const serverParameters = require('./serverParams');
+const config = require('./config');
 // Configure Mail Client 
 
 var mailer = {};
@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'cloneswarm.usask@gmail.com',
-        pass: serverParameters.PASSWORD
+        pass: config.PASSWORD
     },
     secure: false,
     tls: {
