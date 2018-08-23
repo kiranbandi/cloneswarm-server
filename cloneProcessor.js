@@ -91,7 +91,7 @@ module.exports = function cloneProcessor(database) {
     this.processRecord = function(uniqueID) {
         // Processing state is set to processing by default
         var processingState = 'processing';
-        winston.info('Processing Record for - ', uniqueID);
+        winston.info('Processing Record for - ' + uniqueID);
 
         instance
             .lookupRecord(uniqueID)
@@ -99,12 +99,12 @@ module.exports = function cloneProcessor(database) {
                 return spawnThreadToProcessProject(uniqueID, recordData.repositoryName, recordData.progLanguage, recordData.granularity, recordData.requesterEmail);
             })
             .then(() => {
-                winston.info("processing complete for ", uniqueID);
+                winston.info("processing complete for - " + uniqueID);
                 processingState = "complete";
             })
             .catch((err) => {
-                winston.error("There was an error in processing -", uniqueID);
-                winston.error("Error Details - ", err);
+                winston.error("There was an error in processing - " + uniqueID);
+                winston.error(err);
                 processingState = "error";
             })
             .finally(() => {
