@@ -4,7 +4,6 @@ const https = require('https');
 var shortid = require('shortid');
 var app = express();
 const MongoClient = require('mongodb').MongoClient;
-
 const config = require('./config');
 const cloneProcessorCreator = require('./cloneProcessor');
 

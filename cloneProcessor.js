@@ -4,8 +4,7 @@ const S3 = require('./configureS3');
 const shell = require('shelljs');
 const exec = require('child_process').exec;
 const Promise = require('promise');
-
-var UILink = "https://clone-swarm.usask.ca";
+const config = require('./config');
 
 function readFile(filePath) {
     return new Promise((resolve, reject) => {
@@ -40,7 +39,7 @@ function spawnThreadToProcessProject(uniqueID, repositoryName, progLanguage, gra
                 })
                 // If all the files are processed properly then send a mail to the person informing that processing is done
                 .then(() => {
-                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + UILink + "/?source=" + uniqueID + "&page=dashboard  -Cloneswarm");
+                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + config.UI + "/?source=" + uniqueID + "&page=dashboard  -Cloneswarm");
                     resolve();
                 })
                 .catch(err => { reject(err); })
