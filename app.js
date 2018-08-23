@@ -1,16 +1,12 @@
 const express = require('express');
-const shell = require('shelljs');
-const exec = require('child_process').exec;
-// Shortid to create a unique short code 
 var shortid = require('shortid');
-
-var cloneProcessorCreator = require('./cloneProcessor');
 var app = express();
 const MongoClient = require('mongodb').MongoClient;
 
-var serverParameters = {},
-    database, cloneProcessor;;
-process.argv.slice(2).forEach((val, index) => { serverParameters[val.split("=")[0]] = val.split("=")[1]; });
+const serverParameters = require('./serverParams');
+const cloneProcessorCreator = require('./cloneProcessor');
+
+
 const mongoServer = "mongodb://" + serverParameters.MUSER + ":" + serverParameters.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
 
 
@@ -18,6 +14,7 @@ const mongoServer = "mongodb://" + serverParameters.MUSER + ":" + serverParamete
 MongoClient.connect(mongoServer, (err, client) => {
 
     if (err) return console.log(err);
+
     database = client.db('clone-swarm-repo-records');
     cloneProcessor = new cloneProcessorCreator(database, serverParameters);
 
