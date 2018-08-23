@@ -1,80 +1,33 @@
 const express = require('express');
 const shell = require('shelljs');
 const exec = require('child_process').exec;
-const AWS = require('aws-sdk');
-var fs = require('fs');
-var Promise = require('promise');
 // Shortid to create a unique short code 
 var shortid = require('shortid');
-var nodemailer = require('nodemailer');
+
+var cloneProcessorCreator = require('./cloneProcessor');
 var app = express();
+const MongoClient = require('mongodb').MongoClient;
+
+var serverParameters = {},
+    database, cloneProcessor;;
+process.argv.slice(2).forEach((val, index) => { serverParameters[val.split("=")[0]] = val.split("=")[1]; });
+const mongoServer = "mongodb://" + serverParameters.MUSER + ":" + serverParameters.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
 
 
-var UILink = "https://kiranbandi.github.io/clone-swarm-ui";
+// Start the server only once the connection to the database is complete
+MongoClient.connect(mongoServer, (err, client) => {
 
-// Configure AWS with your credentials set in environmental variables
-AWS.config.update({ accessKeyId: process.env.ACCESS_KEY_ID, secretAccessKey: process.env.SECRET_ACCESS_KEY });
-// Create an s3 instance
-const s3 = new AWS.S3();
+    if (err) return console.log(err);
+    database = client.db('clone-swarm-repo-records');
+    cloneProcessor = new cloneProcessorCreator(database, serverParameters);
 
-// Configure Mail Client 
-var transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'cloneswarm.usask@gmail.com',
-        pass: process.env.PASSWORD
-    },
-    secure: false,
-    tls: {
-        rejectUnauthorized: false
-    }
+    var server = app.listen(8081, function() {
+        console.log("Server Live at http://%s:%s", server.address().address, server.address().port)
+    })
 });
 
-function spawnThreadToProcessProject(repository_name, progLanguage, granularity, requesterEmail) {
 
-    const uniqueID = shortid.generate();
-    console.log("processing request for UID - " + uniqueID);
-    const project_name = repository_name.split("/").pop().slice(0, -4);
-
-    var script = exec('sh process.sh' + " " + uniqueID + " " + repository_name + " " + project_name + " " + progLanguage + " " + granularity,
-        (error, stdout, stderr) => {
-            // Fills up the console screen so temporarily commenting out 
-            // but should be logged eventually onto a different file to keep track of requests being processed
-            console.log(`${stdout}`);
-            console.log(`${stderr}`);
-            if (error !== null) {
-                console.log(`exec error: ${error}`);
-            }
-        });
-
-    script.on('close', (code) => {
-
-        var xmlPath = 'workspace/sandbox-' + uniqueID + "/" + project_name + "_" + granularity + "-clones";
-        xmlPath += "/" + project_name + "_" + granularity + "-clones-0.30-classes-withsource.xml";
-
-        // Read the xml file having the clone data information 
-        readFile(xmlPath)
-            // Then write the xml file to S3 bucket 
-            .then(data => {
-                return saveFileToS3Bucket(uniqueID + "-clone-info", "xml", data);
-            })
-            //  If all the files are processed properly then send a mail to the person informing that processing is done 
-            .then(data => {
-                console.log("Processing complete for UID-" + uniqueID);
-                sendMail(requesterEmail, "Clone Detection Complete for Project: " + project_name + " ,Please check here - " + UILink + "/?source=" + uniqueID + "  -Cloneswarm");
-            })
-            .catch(err => {
-                console.log('error in uploading files to s3', err);
-            })
-            .finally(() => {
-                shell.exec("rm -rf workspace/sandbox-" + uniqueID);
-            })
-    });
-}
-
-
-app.get('/processRepository', function(req, res) {
-
+app.get('/process-repository', function(req, res) {
     // Setting response headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     // Request methods you wish to allow
@@ -82,87 +35,34 @@ app.get('/processRepository', function(req, res) {
     // Request headers you wish to allow
     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 
-    const repository_name = req.query.githubLink;
+    const repositoryName = req.query.githubLink;
     const requesterEmail = req.query.email;
     const progLanguage = req.query.language;
     const granularity = req.query.granularity;
+    const processingState = 'waiting';
+    const recordTimestamp = Date.now();
+    const uniqueID = shortid.generate();
 
-    if (repository_name && requesterEmail && progLanguage && granularity) {
-        // Send response
-        res.end('Your repository is being processed , You will receive a confirmation once its done');
-        spawnThreadToProcessProject(repository_name, progLanguage, granularity, requesterEmail)
-    } else {
-        res.status(404).send("Something went wrong");
-    }
-})
+    if (repositoryName && requesterEmail && progLanguage && granularity) {
 
-function readFile(filePath) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', (err, contents) => {
+        database.collection('repositories').insertOne({
+            uniqueID,
+            repositoryName,
+            requesterEmail,
+            progLanguage,
+            granularity,
+            processingState,
+            recordTimestamp
+        }, (err, result) => {
             if (err) {
-                return reject(err);
+                res.status(404).send("Something went wrong");
+                console.log(err);
             } else {
-                resolve(contents)
-            };
-        });
-    });
-}
-
-function sendMail(toMailAddress, mailMessage) {
-
-    var mailOptions = {
-        from: 'cloneswarm.usask@gmail.com',
-        to: toMailAddress,
-        subject: 'Cloneswarm Project Report',
-        text: mailMessage
-    };
-
-    transporter.sendMail(mailOptions, function(error, info) {
-        if (error) {
-            console.log(error);
-        } else {
-            console.log('Email sent to ' + toMailAddress);
-        }
-    });
-}
-
-function saveFileToS3Bucket(filename, filetype, base64FileData) {
-
-    var bucketSubFolder, contentTypeInfo;
-
-    switch (filetype) {
-        case 'json':
-            bucketSubFolder = 'json';
-            contentTypeInfo = 'application/json';
-            break;
-        case 'xml':
-            bucketSubFolder = 'clone-xml-info';
-            contentTypeInfo = 'text/xml';
-            break;
-        case 'html':
-            bucketSubFolder = 'complete-report';
-            contentTypeInfo = 'text/html';
-            break;
-    }
-
-    const params = {
-        Bucket: 'cloneswarm-store/clone-data/' + bucketSubFolder,
-        Key: `${filename}.${filetype}`,
-        Body: base64FileData,
-        ACL: 'public-read',
-        ContentType: contentTypeInfo // required
-    }
-
-    return new Promise((resolve, reject) => {
-        s3.upload(params, (err, data) => {
-            if (err) { return reject(err); } else { resolve(data) };
+                // Send response
+                res.end('Your repository is being processed , You will receive a confirmation once its done');
+                cloneProcessor.addToWaitList(uniqueID);
+            }
         })
-    });
+    } else { res.status(404).send("Something went wrong"); }
 
-}
-
-var server = app.listen(8081, function() {
-    var host = server.address().address
-    var port = server.address().port
-    console.log("Server Live at http://%s:%s", host, port)
 })
