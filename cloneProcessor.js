@@ -40,7 +40,7 @@ function spawnThreadToProcessProject(uniqueID, repositoryName, progLanguage, gra
                 })
                 // If all the files are processed properly then send a mail to the person informing that processing is done
                 .then(() => {
-                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + UILink + "/?source=" + uniqueID + "  -Cloneswarm" + "&page=dashboard");
+                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + UILink + "/?source=" + uniqueID + "&page=dashboard  -Cloneswarm");
                     resolve();
                 })
                 .catch(err => { reject(err); })
