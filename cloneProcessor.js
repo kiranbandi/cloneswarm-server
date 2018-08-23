@@ -3,14 +3,60 @@ const mailer = require('./mailer');
 const S3 = require('./configureS3');
 const shell = require('shelljs');
 const exec = require('child_process').exec;
+const Promise = require('promise');
+
+var UILink = "https://clone-swarm.usask.ca";
+
+function readFile(filePath) {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, 'utf8', (err, contents) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(contents);
+            };
+        });
+    });
+}
+
+function spawnThreadToProcessProject(uniqueID, repositoryName, progLanguage, granularity, requesterEmail) {
+
+    return new Promise((resolve, reject) => {
+
+        // Get project folder from the git repo name
+        const projectName = repositoryName.split("/").pop().slice(0, -4);
+        // Execute the script 
+        var script = exec('sh process.sh' + " " + uniqueID + " " + repositoryName + " " + projectName +
+            " " + progLanguage + " " + granularity, (error) => { if (error !== null) { reject(error); } });
+
+        script.on('close', (code) => {
+            var xmlPath = 'workspace/sandbox-' + uniqueID + "/" + projectName + "_" + granularity + "-clones";
+            xmlPath += "/" + projectName + "_" + granularity + "-clones-0.30-classes-withsource.xml";
+            // Read the xml file having the clone data information 
+            readFile(xmlPath)
+                // Then write the xml file to S3 bucket 
+                .then((data) => {
+                    return S3.saveFileToS3Bucket(uniqueID + "-clone-info", "xml", data);
+                })
+                // If all the files are processed properly then send a mail to the person informing that processing is done
+                .then(() => {
+                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + UILink + "/?source=" + uniqueID + "  -Cloneswarm" + "&page=dashboard");
+                    resolve();
+                })
+                .catch(err => { reject(err); })
+                // Remove the folder from disk once processing is complete
+                .finally(() => { shell.exec("rm -rf workspace/sandbox-" + uniqueID); })
+        });
+    });
+
+}
+
 
 module.exports = function cloneProcessor(database) {
 
     var instance = this;
     instance.waitList = [];
     instance.isCurrentlyProcessing = false;
-
-    var UILink = "https://kiranbandi.github.io/clone-swarm-ui";
 
     this.addToWaitList = function(uniqueID) {
         instance.waitList.push(uniqueID);
@@ -93,52 +139,4 @@ module.exports = function cloneProcessor(database) {
     return {
         addToWaitList: this.addToWaitList
     };
-}
-
-
-function readFile(filePath) {
-    return new Promise((resolve, reject) => {
-        fs.readFile(filePath, 'utf8', (err, contents) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(contents);
-            };
-        });
-    });
-}
-
-
-
-function spawnThreadToProcessProject(uniqueID, repositoryName, progLanguage, granularity, requesterEmail) {
-
-    return new Promise((resolve, reject) => {
-
-        // Get project folder from the git repo name
-        const projectName = repositoryName.split("/").pop().slice(0, -4);
-        // Execute the script 
-        var script = exec('sh process.sh' + " " + uniqueID + " " + repositoryName + " " + projectName +
-            " " + progLanguage + " " + granularity, (error) => { if (error !== null) { reject(error); } });
-
-        script.on('close', (code) => {
-
-            var xmlPath = 'workspace/sandbox-' + uniqueID + "/" + projectName + "_" + granularity + "-clones";
-            xmlPath += "/" + projectName + "_" + granularity + "-clones-0.30-classes-withsource.xml";
-            // Read the xml file having the clone data information 
-            readFile(xmlPath)
-                // Then write the xml file to S3 bucket 
-                .then((data) => {
-                    return S3.saveFileToS3Bucket(uniqueID + "-clone-info", "xml", data);
-                })
-                // If all the files are processed properly then send a mail to the person informing that processing is done
-                .then(() => {
-                    mailer.sendMail(requesterEmail, "Clone Detection Complete for Project: " + projectName + " ,Please check here - " + UILink + "/?source=" + uniqueID + "  -Cloneswarm");
-                    resolve();
-                })
-                .catch(err => { reject(err); })
-                // Remove the folder from disk once processing is complete
-                .finally(() => { shell.exec("rm -rf workspace/sandbox-" + uniqueID); })
-        });
-    });
-
 }
