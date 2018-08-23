@@ -5,15 +5,13 @@ const shell = require('shelljs');
 const exec = require('child_process').exec;
 const Promise = require('promise');
 const config = require('./config');
+var winston = require('./winston');
+
 
 function readFile(filePath) {
     return new Promise((resolve, reject) => {
         fs.readFile(filePath, 'utf8', (err, contents) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(contents);
-            };
+            if (err) { reject(err) } else { resolve(contents) };
         });
     });
 }
@@ -68,7 +66,7 @@ module.exports = function cloneProcessor(database) {
             // get record at the top of the stack 
             var uniqueID = instance.waitList[0];
             instance.isCurrentlyProcessing = true;
-            console.log("Switching into processing mode...");
+            winston.info("Switching into processing mode...");
             instance.processRecord(uniqueID);
         }
     };
@@ -77,12 +75,7 @@ module.exports = function cloneProcessor(database) {
     this.lookupRecord = function(uniqueID) {
         return new Promise((resolve, reject) => {
             database.collection('repositories').findOne({ uniqueID }, (err, result) => {
-                if (err) {
-                    console.log(error);
-                    return reject(err);
-                } else {
-                    resolve(result);
-                }
+                if (err) { reject(err); } else { resolve(result); }
             });
         });
     }
@@ -90,12 +83,7 @@ module.exports = function cloneProcessor(database) {
     this.setRecordProcessingState = function(uniqueID, processingState) {
         return new Promise((resolve, reject) => {
             database.collection('repositories').findOneAndUpdate({ uniqueID }, { $set: { processingState } }, (err, result) => {
-                if (err) {
-                    console.log(error);
-                    return reject(err);
-                } else {
-                    resolve(result);
-                }
+                if (err) { return reject(err); } else { resolve(result); }
             });
         });
     }
@@ -103,7 +91,7 @@ module.exports = function cloneProcessor(database) {
     this.processRecord = function(uniqueID) {
         // Processing state is set to processing by default
         var processingState = 'processing';
-        console.log('Processing Record for - ', uniqueID);
+        winston.info('Processing Record for - ', uniqueID);
 
         instance
             .lookupRecord(uniqueID)
@@ -111,12 +99,12 @@ module.exports = function cloneProcessor(database) {
                 return spawnThreadToProcessProject(uniqueID, recordData.repositoryName, recordData.progLanguage, recordData.granularity, recordData.requesterEmail);
             })
             .then(() => {
-                console.log("processing complete for ", uniqueID);
+                winston.info("processing complete for ", uniqueID);
                 processingState = "complete";
             })
             .catch((err) => {
-                console.log("There was an error in processing -", uniqueID);
-                console.log("Error Details - ", err);
+                winston.error("There was an error in processing -", uniqueID);
+                winston.error("Error Details - ", err);
                 processingState = "error";
             })
             .finally(() => {
@@ -130,7 +118,7 @@ module.exports = function cloneProcessor(database) {
                 } else {
                     //  turn processing indicator to false
                     instance.isCurrentlyProcessing = false;
-                    console.log("Switching into standy mode...");
+                    winston.info("Switching into standy mode...");
                 }
             });
     }

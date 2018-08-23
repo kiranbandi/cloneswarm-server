@@ -6,7 +6,11 @@ var app = express();
 const MongoClient = require('mongodb').MongoClient;
 const config = require('./config');
 const cloneProcessorCreator = require('./cloneProcessor');
+var morgan = require('morgan');
+var winston = require('./winston');
 
+// Use morgan for logging Requests , combined along with log outputs from winston
+app.use(morgan('combined', { stream: winston.stream }));
 
 const mongoServer = "mongodb://" + config.MUSER + ":" + config.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
 
@@ -20,22 +24,20 @@ const options = {
 // Start the server only once the connection to the database is complete
 MongoClient.connect(mongoServer, (err, client) => {
 
-    if (err) return console.log(err);
+    if (err) return winston.error(err);
 
     database = client.db('clone-swarm-repo-records');
     cloneProcessor = new cloneProcessorCreator(database, config);
 
-    var server = https.createServer(options, app).listen(8443, function() {
-        console.log("Server Live on Port 8443")
-    })
+    https.createServer(options, app).listen(8443, function() { winston.info("Server Live on Port 8443") })
 });
 
 
 app.get('/process-repository', function(req, res) {
     // Setting response headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Origin', 'https://clone-swarm.usask.ca');
     // Request methods you wish to allow
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Methods', 'GET');
     // Request headers you wish to allow
     res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
 
@@ -60,7 +62,7 @@ app.get('/process-repository', function(req, res) {
         }, (err, result) => {
             if (err) {
                 res.status(404).send("Something went wrong");
-                console.log(err);
+                winston.error(err);
             } else {
                 // Send response
                 res.end('Your repository is being processed , You will receive a confirmation once its done');

@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const config = require('./config');
+var winston = require('./winston');
 // Configure Mail Client 
 
 var mailer = {};
@@ -27,9 +28,9 @@ mailer.sendMail = function(toMailAddress, mailMessage) {
 
     transporter.sendMail(mailOptions, function(error, info) {
         if (error) {
-            console.log(error);
+            winston.error(error);
         } else {
-            console.log('Email sent to ' + toMailAddress);
+            winston.info('Email sent to ' + toMailAddress);
         }
     });
 }
