@@ -12,23 +12,17 @@ var winston = require('./winston');
 // Use morgan for logging Requests , combined along with log outputs from winston
 app.use(morgan('combined', { stream: winston.stream }));
 
-const mongoServer = "mongodb://" + config.MUSER + ":" + config.MPWD + "@ds051740.mlab.com:51740/clone-swarm-repo-records";
-
 // Link keys
 const options = {
     cert: fs.readFileSync('./key/fullchain.pem'),
     key: fs.readFileSync('./key/privkey.pem')
 }
 
-
 // Start the server only once the connection to the database is complete
-MongoClient.connect(mongoServer, (err, client) => {
-
+MongoClient.connect('mongodb://localhost:27017', (err, client) => {
     if (err) return winston.error(err);
-
-    database = client.db('clone-swarm-repo-records');
+    database = client.db('clone-swarm-db');
     cloneProcessor = new cloneProcessorCreator(database, config);
-
     https.createServer(options, app).listen(8443, function() { winston.info("Server Live on Port 8443") })
 });
 
